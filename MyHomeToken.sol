@@ -1,5 +1,6 @@
 pragma solidity >=0.7.0 <0.9.0;
 // SPDX-License-Identifier: MIT
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 
 contract MyHomesToken {
@@ -14,18 +15,14 @@ contract MyHomesToken {
     State private state;
     address[] public shareHolders;
     mapping(address => bool) public shareHolderRegistry;
-    mapping (address => uint256) private balances;
+    mapping (address => uint256) public balances;
 
-    // Ballot
-    BallotState private ballotState;
-    address public ballotInitiator;
-    string public ballotName;
-    string public proposal;
-    uint private resultCount = 0;
-    uint public finalResult = 0;
-    uint public totalVotes = 0;
+    // Ballots
+    mapping(uint => Ballot) public ballotHistory;
+    uint public totalBallots = 0;
+    Ballot public currentBallot;
     mapping(uint => Vote) private votes;
-
+    uint private resultCount;
 
     constructor(string memory _name, string memory _description) payable {
         owner = payable(msg.sender);
@@ -34,6 +31,7 @@ contract MyHomesToken {
         hp.description = _description;
         hp.totalValue = 0;
         state = State.Created;
+        addShareHolder(owner);
     }
 
     struct House {
@@ -53,6 +51,15 @@ contract MyHomesToken {
         bool choice;
     }
 
+    struct Ballot {
+        string ballotId;
+        address ballotOwner;
+        string proposal;
+        uint finalResult;
+        uint totalVotes;
+        BallotState state;
+    }
+
     modifier onlyRegulator() {
 		require(msg.sender == owner);
 		_;
@@ -64,12 +71,27 @@ contract MyHomesToken {
 	}
 
     modifier onlyBallotInitiator() {
-		require(msg.sender == ballotInitiator);
+		require(msg.sender == currentBallot.ballotOwner);
 		_;
 	}
 
 	modifier inBallotState(BallotState _state) {
-		require(ballotState == _state);
+		require(currentBallot.state == _state, "Voting did not start yet!");
+		_;
+	}
+
+    modifier canVote(address sender) {
+        if (owner != sender) {
+            bool found = false;
+            for (uint i = 0; i<totalShareHolders; i++) {
+                if (shareHolders[i] == sender || owner == sender) {
+                    found = true;
+                }
+            }
+
+            require(found == true, "You have no rights to create ballot!");
+        }
+		
 		_;
 	}
 
@@ -85,7 +107,6 @@ contract MyHomesToken {
     function etherBalance(address _addr) public view returns (uint256) {
         return _addr.balance;
     }
-    
 
     function startTrading() public onlyRegulator {
         state = State.Running;
@@ -116,7 +137,6 @@ contract MyHomesToken {
     function addShareHolder(address _shareHolderAddress)
         public
     {   
-
         if(!contains(_shareHolderAddress)) {
             shareHolderRegistry[_shareHolderAddress] = false;
             shareHolders.push(_shareHolderAddress);
@@ -126,6 +146,17 @@ contract MyHomesToken {
         
     }
 
+    function removeShareHolder(address _shareHolderAddress)
+        public
+    {   
+        for (uint i = 0; i<totalShareHolders; i++) {
+            if (shareHolders[i] == _shareHolderAddress) {
+                delete shareHolders[i];
+                totalShareHolders--;
+            }
+        }   
+    }
+
     function transfer(address _to, uint256 _value) public {
         require (balances[msg.sender] >= _value);
         require(msg.sender == owner);
@@ -133,27 +164,39 @@ contract MyHomesToken {
         balances[_to]+=_value;
     }
 
-    function buy() public payable {
-        uint256 tokenNum = msg.value/tokenPrice; //number of tokens to be bought
-        require(msg.value > 0); //the paid money should be more than 0
-        require(tokenNum <= shareLimit, "Number of shares exceeded the limit"); //the paid money should be more than 0
-        owner.transfer(msg.value); //transfer ether from the buyer to the seller (i.e., tokenOwner)
-        balances[owner] -= tokenNum; // the number of tokens held by the token owner decreases
-        balances[msg.sender] += tokenNum;  // the buyer gets the corresponding number of tokens
-        addShareHolder(msg.sender);
-    }
-    
-    // function sell(uint256 _amount) external {
-    //     require(contains(msg.sender), "This user does not hold any shares");
-    //     balances[msg.sender] -= _amount;
-    //     balances[address(this)] += _amount;
-    // }
+    function sellToOwner(uint tokenNum) public payable {
+        require(tokenNum <= balances[msg.sender], "Cannot sell shares you do not own");
+        address payable receiver = payable(msg.sender);
+        receiver.transfer(msg.value);
+        if (tokenNum == balances[msg.sender]) {
+            removeShareHolder(msg.sender);
+        }
 
-    function createBallot(string memory _ballotName, string memory _proposal) public {
-        ballotState = BallotState.Created;
-        ballotName = _ballotName;
-        proposal = _proposal;
-        ballotInitiator = msg.sender;
+        balances[msg.sender] -= tokenNum;
+        balances[owner] += tokenNum;        
+    }
+
+    function buy(uint tokenNum) public payable {
+        uint256 unitPrice = hp.totalValue/totalShares;
+        uint requiredWeiBalance = unitPrice * tokenNum;
+        require(msg.value == requiredWeiBalance, "Incorrect wei amount submitted!"); 
+        require(tokenNum <= shareLimit, "Number of shares exceeded the limit");
+        require(balances[owner] >= tokenNum, "There are less than desired amount of shares");
+        owner.transfer(msg.value);
+        balances[owner] -= tokenNum;
+        balances[msg.sender] += tokenNum;
+        addShareHolder(msg.sender);
+        if (balances[owner] == 0) {
+            removeShareHolder(owner);
+        }
+    }
+
+    function createBallot(string memory _proposal) public canVote(msg.sender) {
+        currentBallot = Ballot(Strings.toString(totalBallots), msg.sender, _proposal, 0, 0, BallotState.Created);
+        for (uint i = 0; i<totalShareHolders; i++) {
+            address sh = shareHolders[i];
+            shareHolderRegistry[sh] = false;
+        }
     }
 
     function startVote()
@@ -161,13 +204,14 @@ contract MyHomesToken {
         inBallotState(BallotState.Created)
         onlyBallotInitiator
     {
-        ballotState = BallotState.Voting;   
+        currentBallot.state = BallotState.Voting;   
         emit voteStarted();
     }
 
     function doVote(bool _choice)
         public
         inBallotState(BallotState.Voting)
+        canVote(msg.sender)
         returns (bool voted)
     {
         bool found = false;
@@ -179,21 +223,31 @@ contract MyHomesToken {
             if (_choice){
                 resultCount++; //counting on the go
             }
-            votes[totalVotes] = v;
-            totalVotes++;
+            votes[currentBallot.totalVotes] = v;
+            currentBallot.totalVotes++;
             found = true;
         }
         emit voteDone(msg.sender);
         return found;
     }
-    
+
+    function getMyVote() public view canVote(msg.sender) returns (bool vote) {
+        for (uint i = 0; i < currentBallot.totalVotes; i++) {
+            if (votes[i].shareHolderAddress == msg.sender) {
+                return votes[i].choice;
+            }
+        }
+    }
+
     function endVote()
         public
         inBallotState(BallotState.Voting)
         onlyBallotInitiator
     {
-        ballotState = BallotState.Ended;
-        finalResult = resultCount;
-        emit voteEnded(finalResult);
+        currentBallot.state = BallotState.Ended;
+        currentBallot.finalResult = resultCount;
+        ballotHistory[totalBallots] = currentBallot;
+        totalBallots++;
+        emit voteEnded(currentBallot.finalResult);
     }
 }

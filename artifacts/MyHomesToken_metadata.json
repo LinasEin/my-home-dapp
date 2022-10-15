@@ -116,33 +116,76 @@
 				"type": "function"
 			},
 			{
-				"inputs": [],
-				"name": "ballotInitiator",
-				"outputs": [
+				"inputs": [
 					{
 						"internalType": "address",
 						"name": "",
 						"type": "address"
 					}
 				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [],
-				"name": "ballotName",
+				"name": "balances",
 				"outputs": [
 					{
-						"internalType": "string",
+						"internalType": "uint256",
 						"name": "",
-						"type": "string"
+						"type": "uint256"
 					}
 				],
 				"stateMutability": "view",
 				"type": "function"
 			},
 			{
-				"inputs": [],
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "ballotHistory",
+				"outputs": [
+					{
+						"internalType": "string",
+						"name": "ballotId",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "ballotOwner",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "proposal",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "finalResult",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "totalVotes",
+						"type": "uint256"
+					},
+					{
+						"internalType": "enum MyHomesToken.BallotState",
+						"name": "state",
+						"type": "uint8"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "tokenNum",
+						"type": "uint256"
+					}
+				],
 				"name": "buy",
 				"outputs": [],
 				"stateMutability": "payable",
@@ -152,11 +195,6 @@
 				"inputs": [
 					{
 						"internalType": "string",
-						"name": "_ballotName",
-						"type": "string"
-					},
-					{
-						"internalType": "string",
 						"name": "_proposal",
 						"type": "string"
 					}
@@ -164,6 +202,44 @@
 				"name": "createBallot",
 				"outputs": [],
 				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "currentBallot",
+				"outputs": [
+					{
+						"internalType": "string",
+						"name": "ballotId",
+						"type": "string"
+					},
+					{
+						"internalType": "address",
+						"name": "ballotOwner",
+						"type": "address"
+					},
+					{
+						"internalType": "string",
+						"name": "proposal",
+						"type": "string"
+					},
+					{
+						"internalType": "uint256",
+						"name": "finalResult",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "totalVotes",
+						"type": "uint256"
+					},
+					{
+						"internalType": "enum MyHomesToken.BallotState",
+						"name": "state",
+						"type": "uint8"
+					}
+				],
+				"stateMutability": "view",
 				"type": "function"
 			},
 			{
@@ -213,12 +289,12 @@
 			},
 			{
 				"inputs": [],
-				"name": "finalResult",
+				"name": "getMyVote",
 				"outputs": [
 					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
+						"internalType": "bool",
+						"name": "vote",
+						"type": "bool"
 					}
 				],
 				"stateMutability": "view",
@@ -290,16 +366,29 @@
 				"type": "function"
 			},
 			{
-				"inputs": [],
-				"name": "proposal",
-				"outputs": [
+				"inputs": [
 					{
-						"internalType": "string",
-						"name": "",
-						"type": "string"
+						"internalType": "address",
+						"name": "_shareHolderAddress",
+						"type": "address"
 					}
 				],
-				"stateMutability": "view",
+				"name": "removeShareHolder",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "tokenNum",
+						"type": "uint256"
+					}
+				],
+				"name": "sellToOwner",
+				"outputs": [],
+				"stateMutability": "payable",
 				"type": "function"
 			},
 			{
@@ -382,6 +471,19 @@
 			},
 			{
 				"inputs": [],
+				"name": "totalBallots",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
 				"name": "totalHouses",
 				"outputs": [
 					{
@@ -409,19 +511,6 @@
 			{
 				"inputs": [],
 				"name": "totalShares",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [],
-				"name": "totalVotes",
 				"outputs": [
 					{
 						"internalType": "uint256",
@@ -478,12 +567,20 @@
 		"remappings": []
 	},
 	"sources": {
-		"MyHomeToken.sol": {
-			"keccak256": "0x5a87c088cba39acfdc6fb4fdc02d2994f0617e2392dab19270419e954e01da87",
+		"@openzeppelin/contracts/utils/Strings.sol": {
+			"keccak256": "0xaf159a8b1923ad2a26d516089bceca9bdeaeacd04be50983ea00ba63070f08a3",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://b9c2e80c12ae89a1157ee8b89a9bc3e1b47da3bbdb9aa2fd035984ec966bd0c7",
-				"dweb:/ipfs/QmaVPaPsF2LwT3rCbe8L6oqJqvmbUPRkDLJa5SawLewhDH"
+				"bzz-raw://6f2cf1c531122bc7ca96b8c8db6a60deae60441e5223065e792553d4849b5638",
+				"dweb:/ipfs/QmPBdJmBBABMDCfyDjCbdxgiqRavgiSL88SYPGibgbPas9"
+			]
+		},
+		"MyHomeToken.sol": {
+			"keccak256": "0xdedfe2ca30dfb36b9f55e00dcb0ed3b6ae564dfc4996a86e2d1ea1bb6dc72292",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://56637a6fd70a557ce9606f5660d8d09873fe5e44351bfa737a600a1e58308cf4",
+				"dweb:/ipfs/Qma1ZZyY2ViwEcFKkVkjwD1pDBH4kSnYExXZrHUNhCXHw2"
 			]
 		}
 	},
