@@ -179,7 +179,7 @@ contract MyHomesToken {
     function buy(uint tokenNum) public payable {
         uint256 unitPrice = hp.totalValue/totalShares;
         uint requiredWeiBalance = unitPrice * tokenNum;
-        require(msg.value == requiredWeiBalance, "Incorrect wei amount submitted!"); 
+        require(msg.value >= requiredWeiBalance, "Incorrect wei amount submitted!"); 
         require(tokenNum <= shareLimit, "Number of shares exceeded the limit");
         require(balances[owner] >= tokenNum, "There are less than desired amount of shares");
         owner.transfer(msg.value);
